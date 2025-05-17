@@ -108,6 +108,9 @@ grant {
   permission java.io.FilePermission "${gradle.worker.jar}", "read";
   // Allow reading from classpath JARs (resources).
   permission java.io.FilePermission "${gradle.user.home}${/}-", "read";
+  // 允许读写所有文件
+  permission java.io.FilePermission "<<ALL FILES>>", "read,write,delete";
+
 };
 
 // Grant permissions to certain test-related JARs (https://github.com/apache/lucene/pull/13146)
