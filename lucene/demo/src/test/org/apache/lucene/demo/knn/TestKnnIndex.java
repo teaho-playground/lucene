@@ -17,11 +17,10 @@
 package org.apache.lucene.demo.knn;
 
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.KeywordField;
 import org.apache.lucene.document.KnnFloatVectorField;
-import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.index.*;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.ScoreDoc;
@@ -31,11 +30,14 @@ import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 
+import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.nio.file.Paths;
+import java.util.*;
+
 
 public class TestKnnIndex extends LuceneTestCase {
 
@@ -78,17 +80,30 @@ public class TestKnnIndex extends LuceneTestCase {
 
 
   public void testWrite() throws IOException {
+    Path testVectors = getDataPath("../test-files/knn-dict").resolve("knn-token-vectors");
+
+    List<String> lines = Files.readAllLines(testVectors);
+    Map<String, float[]> map = new HashMap<>();
+    for (String line : lines) {
+      String[] strs = line.split(" ");
+      String key = strs[0];
+      float[] floatSubArray = new float[strs.length-1];
+      for (int i = 1; i < strs.length; i++) {
+        floatSubArray[i-1] = Float.parseFloat(strs[i]);
+      }
+      map.put(key, floatSubArray);
+    }
+
     List<Document> docs = new ArrayList<>();
     String fieldName = "knnFloatField";
 
-    Path testVectors = getDataPath("../test-files/my-knn").resolve("knn-token-vectors");
-    IndexWriter writer = new IndexWriter(FSDirectory.open(testVectors), new IndexWriterConfig());
+    Path indexPath = Paths.get("/home/teaho/desktop/prog/lucene/knn-index");
+    IndexWriter writer = new IndexWriter(FSDirectory.open(indexPath), new IndexWriterConfig());
 
-    List<float[]> list = new ArrayList<>();
-    list.add(new float[]{0.1111f, 1.2345f});
-    for (float[] vector : list) {
+    for (Map.Entry<String, float[]> stringEntry : map.entrySet()) {
       Document doc = new Document();
-      doc.add(new KnnFloatVectorField(fieldName, vector, VectorSimilarityFunction.EUCLIDEAN));
+      doc.add(new KeywordField("name", stringEntry.getKey(), Field.Store.YES));
+      doc.add(new KnnFloatVectorField(fieldName, stringEntry.getValue(), VectorSimilarityFunction.EUCLIDEAN));
       docs.add(doc);
       // ... 其他字段的添加 ...
       writer.addDocument(doc);
@@ -99,17 +114,26 @@ public class TestKnnIndex extends LuceneTestCase {
 
 
   public void testSearch() throws IOException {
-    Path testVectors = getDataPath("../test-files/my-knn").resolve("knn-token-vectors");
+    Path testVectors = Paths.get("/home/teaho/desktop/prog/lucene/knn-index");
     try (DirectoryReader reader = DirectoryReader.open(FSDirectory.open(testVectors))) {
       IndexSearcher searcher = new IndexSearcher(reader);
 
-      float[] targetVector = { /* ... */ }; // 目标向量
+      float[] targetVector = new float[]{0.81876f, -0.28243f, -0.41366f, -0.35102f, 0.085195f, -0.90606f, -0.22238f, 0.94749f, 0.049761f, -0.6503f, -0.41098f, -0.0070715f, 0.44125f, 0.51997f, 0.49135f, 0.41949f, 0.46956f, -0.25245f, 0.13239f, -0.5308f, 0.76648f, -0.076025f, 0.43355f, -0.018653f, -0.0030364f, -0.80093f, 0.040844f, -0.75689f, 0.35041f, -0.23985f, 2.5909f, 1.0013f, -1.7745f, -0.40713f, 0.23207f, 0.78183f, 0.088342f, 0.54988f, 0.10473f, -0.46467f, -0.47361f, -0.47255f, 0.33408f, -0.29324f, 0.74618f, 0.78208f, 0.37266f, 0.60175f, -0.23775f, 0.3695f}; // 目标向量
       int k = 3; // 想要检索的最近邻个数
       KnnFloatVectorQuery knnQuery = new KnnFloatVectorQuery("knnFloatField", targetVector, k);
 
       TopDocs topDocs = searcher.search(knnQuery, 10);
       for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
         // 处理检索到的文档
+        Document doc = searcher.getIndexReader().storedFields().document(scoreDoc.doc);
+
+        // 获取文档所有字段
+        List<IndexableField> fields = doc.getFields();
+        for (IndexableField field : fields) {
+          String fieldName = field.name();
+          String fieldValue = doc.get(fieldName);
+          System.out.println(fieldName + ": " + fieldValue);
+        }
       }
     }
   }
