@@ -97,7 +97,7 @@ public class TestKnnIndex extends LuceneTestCase {
     List<Document> docs = new ArrayList<>();
     String fieldName = "knnFloatField";
 
-    Path indexPath = Paths.get("/home/teaho/desktop/prog/lucene/knn-index");
+    Path indexPath = Paths.get("/home/teawork2/desktop/prog/lucene/knn-index");
     IndexWriter writer = new IndexWriter(FSDirectory.open(indexPath), new IndexWriterConfig());
 
     for (Map.Entry<String, float[]> stringEntry : map.entrySet()) {
@@ -108,13 +108,14 @@ public class TestKnnIndex extends LuceneTestCase {
       // ... 其他字段的添加 ...
       writer.addDocument(doc);
     }
+    writer.commit();
 
     writer.close();
   }
 
 
   public void testSearch() throws IOException {
-    Path testVectors = Paths.get("/home/teaho/desktop/prog/lucene/knn-index");
+    Path testVectors = Paths.get("/home/teawork2/desktop/prog/lucene/knn-index");
     try (DirectoryReader reader = DirectoryReader.open(FSDirectory.open(testVectors))) {
       IndexSearcher searcher = new IndexSearcher(reader);
 
